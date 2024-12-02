@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru_RU">
+<head>
+  <title>GPG Online</title>
+  <script src="openpgp.min.js"></script>
+  <style type="text/css">
+      body, button, textarea, pre {
+          font-family: Consolas;
+      }
+
+      textarea {
+          width: 500px;
+          border: 1px solid silver;
+          border-radius: 3px;
+          padding: 0.2rem;
+      }
+
+      button {
+          font-size: 1rem;
+          border: 1px solid black;
+          background: white;
+          cursor: pointer;
+          padding: 3px 5px 1px 5px;
+      }
+
+      pre, textarea, input {
+          font-size: 0.8rem;
+      }
+
+      h2 {
+          margin: 0;
+          font-weight: normal;
+      }
+
+      #result {
+          display: none;
+      }
+
+      #result.visible {
+          display: block;
+      }
+
+      #copy {
+          width: 32px;
+          height: 32px;
+      }
+  </style>
+</head>
+<body>
+
+<h1>GPG Online</h1>
+
+<div class="message">
+  <h2>Ваше сообщение</h2>
+  <textarea rows="5"></textarea>
+</div>
+
+<div class="message" id="result">
+  <h2>Ссылка на ваше зашифрованное сообщение</h2>
+  <a href="" id="result_link"></a>
+  <button id="copy">
+    <svg aria-hidden="true" class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-194rkxu" data-testid="CopyAllIcon"
+         focusable="false" viewBox="0 0 24 24">
+      <path
+        d="M18 2H9c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h9c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2m0 14H9V4h9zM3 15v-2h2v2zm0-5.5h2v2H3zM10 20h2v2h-2zm-7-1.5v-2h2v2zM5 22c-1.1 0-2-.9-2-2h2zm3.5 0h-2v-2h2zm5 0v-2h2c0 1.1-.9 2-2 2M5 6v2H3c0-1.1.9-2 2-2"></path>
+    </svg>
+  </button>
+</div>
+
+<pre id="output"></pre>
+<button id="encrypt">Отправить</button>
+
+<script>
+  const pubKey = '-----BEGIN PGP PUBLIC KEY BLOCK-----\n' +
+    'Version: Keybase OpenPGP v2.0.9\n' +
+    '\n' +
+    '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\n' +
+    '2cEl\n' +
+    '=OGnu\n' +
+    '-----END PGP PUBLIC KEY BLOCK-----'
+</script>
+<script>
+  const query = query => document.querySelector(query)
+
+  function postData(payload) {
+    const data = new FormData()
+    data.append('kmi', payload)
+
+    /**
+     * proxied request to https://kmi.aeza.net/
+     * because https://kmi.aeza.net/ does not set CORS HTTP Headers
+     * that are necessary for browser to be able to access response body
+     */
+    fetch('https://cors-anywhere.herokuapp.com/https://kmi.aeza.net',
+      {
+        method: 'POST',
+        body: data,
+      })
+      .then(function(res) {
+        return res.text()
+      })
+      .then(function(data) {
+        query('#result').className = 'visible'
+        query('#result_link').innerHTML = data
+        query('#result_link').setAttribute('href', data)
+      })
+  }
+
+  query('#copy').addEventListener('click', () => {
+    if (!navigator.clipboard) {
+      alert('Fallback: Oops, unable to copy')
+    } else {
+      navigator.clipboard.writeText(
+        query('#result_link').innerHTML,
+      )
+      alert('ссылка на сообщение скопирована в буфер обмена')
+    }
+  })
+  query('#encrypt').addEventListener('click', () => {
+    const options = {
+      data: query('.message textarea').value,
+      publicKeys:
+        [openpgp.key.readArmored(pubKey).keys[0]],
+      armor: true,
+    }
+
+    return openpgp.encrypt(options).then(results => {
+      query('#output').innerHTML = results.data
+      postData(results.data)
+    })
+  })
+</script>
+
+</body>
+</html>
